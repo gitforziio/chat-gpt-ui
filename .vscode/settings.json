@@ -5,6 +5,7 @@
     "happy",
     "KHTML",
     "lmdb",
+    "logit",
     "openai",
     "sessionmaker",
     "sqlalchemy",

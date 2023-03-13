@@ -34,7 +34,19 @@ def get_settings(old_state):
     return new_state, saved_api_key
 
 
-def on_click_send_btn(old_state, api_key_text, chat_input, prompt_table, chat_use_history, chat_log):
+def on_click_send_btn(
+        old_state, api_key_text, chat_input, prompt_table, chat_use_history, chat_log,
+        temperature, top_p, choices_num, stream, max_tokens, presence_penalty, frequency_penalty, logit_bias,
+    ):
+
+    chat_log = chat_log or []
+    chat_log_md = "\n".join([xx for xx in map(lambda it: f"#### `{it[0]}`\n\n{it[1]}\n\n", chat_log)])
+
+    try:
+        logit_bias_json = json.dumps(logit_bias) if logit_bias else None
+    except:
+        return old_state, chat_log, chat_log_md, "{}"
+
     new_state = copy.deepcopy(old_state) or {}
 
     print(prompt_table)
@@ -49,24 +61,43 @@ def on_click_send_btn(old_state, api_key_text, chat_input, prompt_table, chat_us
         hist.append(['user', chat_input])
 
     openai.api_key = api_key_text
-    completion = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[xx for xx in map(lambda it: {'role':it[0], 'content':it[1]}, hist)]
-    )
-    print('')
-    print(completion)
-    the_response = completion.choices[0].message.content
-    print(the_response)
-    print('')
-    chat_last_resp = json.dumps(completion.__dict__)
 
-    chat_log = chat_log or []
-    chat_log.append(['user', chat_input])
-    chat_log.append(['assistant', the_response])
+    props = {
+        'model': "gpt-3.5-turbo",
+        'messages': [xx for xx in map(lambda it: {'role':it[0], 'content':it[1]}, hist)],
+        'temperature': temperature,
+        'top_p': top_p,
+        'n': choices_num,
+        'stream': stream,
+        'presence_penalty': presence_penalty,
+        'frequency_penalty': frequency_penalty,
+    }
+    if max_tokens>0:
+        props['max_tokens'] = max_tokens
+    if logit_bias_json is not None:
+        props['logit_bias'] = logit_bias_json
 
-    chat_log_md = "\n".join([xx for xx in map(lambda it: f"#### `{it[0]}`\n\n{it[1]}\n\n", chat_log)])
+    try:
+        completion = openai.ChatCompletion.create(**props)
+        print('')
+        print(completion)
+        the_response = completion.choices[0].message.content
+        print(the_response)
+        print('')
+        chat_last_resp = json.dumps(completion.__dict__)
 
-    return new_state, chat_log, chat_log_md, chat_last_resp
+        chat_log.append(['user', chat_input])
+        chat_log.append(['assistant', the_response])
+
+        chat_log_md = "\n".join([xx for xx in map(lambda it: f"#### `{it[0]}`\n\n{it[1]}\n\n", chat_log)])
+
+        return new_state, chat_log, chat_log_md, chat_last_resp
+    except Exception as error:
+        print(error)
+        chat_log_md = "\n".join([xx for xx in map(lambda it: f"#### `{it[0]}`\n\n{it[1]}\n\n", chat_log)])
+        chat_log_md += "\n"
+        chat_log_md += str(error)
+        return new_state, chat_log, chat_log_md, None
 
 
 def save_settings(old_state, api_key_text):
@@ -84,10 +115,12 @@ with gradio.Blocks(title="ChatGPT", css=".table-wrap .cell-wrap input {min-width
     global_state = gradio.State(value={})
 
     with gradio.Tab("ChatGPT"):
+
         with gradio.Row():
             with gradio.Column(scale=10):
                 gradio.Markdown("Go to https://platform.openai.com/account/api-keys to get your API key.")
                 api_key_text = gradio.Textbox(label="Your API key")
+
         with gradio.Row():
             with gradio.Column(scale=2):
                 api_key_refresh_btn = gradio.Button("🔄")
@@ -106,22 +139,41 @@ with gradio.Blocks(title="ChatGPT", css=".table-wrap .cell-wrap input {min-width
                     )
                     gradio.Markdown("Will be added to the beginning of the conversation. See https://platform.openai.com/docs/guides/chat/introduction .")
 
+
         with gradio.Row():
-            with gradio.Column(scale=10):
-                chat_log = gradio.State()
+            with gradio.Column(scale=6):
                 with gradio.Box():
-                    chat_log_box = gradio.Markdown(label='chat history')
-                chat_input = gradio.Textbox(lines=4, label='input')
-        with gradio.Row():
-            chat_clear_history_btn = gradio.Button("clear history")
-            chat_use_history = gradio.Checkbox(label='send with history', value=True)
-            chat_send_btn = gradio.Button("send")
+                    gradio.Markdown("See https://platform.openai.com/docs/api-reference/chat/create .")
+                    chat_temperature = gradio.Slider(label="temperature", value=1, minimum=0, maximum=2)
+                    chat_top_p = gradio.Slider(label="top_p", value=1, minimum=0, maximum=1)
+                    chat_choices_num = gradio.Slider(label="choices num(n)", value=1, minimum=1, maximum=20)
+                    chat_stream = gradio.Checkbox(label="stream", value=False)
+                    chat_max_tokens = gradio.Slider(label="max_tokens", value=-1, minimum=-1, maximum=4096)
+                    chat_presence_penalty = gradio.Slider(label="presence_penalty", value=0, minimum=-2, maximum=2)
+                    chat_frequency_penalty = gradio.Slider(label="frequency_penalty", value=0, minimum=-2, maximum=2)
+                    chat_logit_bias = gradio.Textbox(label="logit_bias", visible=False)
+                pass
+            with gradio.Column(scale=6):
+                with gradio.Row():
+                    with gradio.Column(scale=10):
+                        chat_log = gradio.State()
+                        with gradio.Box():
+                            chat_log_box = gradio.Markdown(label='chat history')
+                        chat_input = gradio.Textbox(lines=4, label='input')
+                with gradio.Row():
+                    chat_clear_history_btn = gradio.Button("clear history")
+                    chat_use_history = gradio.Checkbox(label='send with history', value=True)
+                    chat_send_btn = gradio.Button("send")
+                pass
 
         with gradio.Row():
             chat_last_resp = gradio.JSON(label='last response')
             chat_send_btn.click(
                 on_click_send_btn,
-                inputs=[global_state, api_key_text, chat_input, prompt_table, chat_use_history, chat_log],
+                inputs=[
+                    global_state, api_key_text, chat_input, prompt_table, chat_use_history, chat_log,
+                    chat_temperature, chat_top_p, chat_choices_num, chat_stream, chat_max_tokens, chat_presence_penalty, chat_frequency_penalty, chat_logit_bias,
+                ],
                 outputs=[global_state, chat_log, chat_log_box, chat_last_resp])
 
         pass
