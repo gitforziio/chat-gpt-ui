@@ -114,6 +114,9 @@ def save_settings(old_state, api_key_text):
 with gradio.Blocks(title="ChatGPT", css=".table-wrap .cell-wrap input {min-width:80%}") as demo:
     global_state = gradio.State(value={})
 
+    # https://gradio.app/docs
+    # https://platform.openai.com/docs/api-reference/chat/create
+
     with gradio.Tab("ChatGPT"):
 
         with gradio.Row():
