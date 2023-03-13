@@ -10,6 +10,7 @@ GUI for OpenAI's [ChatGPT API](https://platform.openai.com/docs/api-reference/ch
 
 - [ ] Stream
 - [ ] Save Settings
+- [ ] Clear history
 - [ ] Save history
 - [ ] Export history
 - [ ] Import history
