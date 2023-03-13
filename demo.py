@@ -64,7 +64,7 @@ def on_click_send_btn(old_state, api_key_text, chat_input, prompt_table, chat_us
     chat_log.append(['user', chat_input])
     chat_log.append(['assistant', the_response])
 
-    chat_log_md = "\n".join([xx for xx in map(lambda it: f"### {it[0]}\n\n{it[1]}\n\n", chat_log)])
+    chat_log_md = "\n".join([xx for xx in map(lambda it: f"#### `{it[0]}`\n\n{it[1]}\n\n", chat_log)])
 
     return new_state, chat_log, chat_log_md, chat_last_resp
 
@@ -111,17 +111,18 @@ with gradio.Blocks(title="ChatGPT", css=".table-wrap .cell-wrap input {min-width
                 chat_log = gradio.State()
                 with gradio.Box():
                     chat_log_box = gradio.Markdown(label='chat history')
-                chat_last_resp = gradio.JSON(label='last response')
                 chat_input = gradio.Textbox(lines=4, label='input')
         with gradio.Row():
             chat_clear_history_btn = gradio.Button("clear history")
             chat_use_history = gradio.Checkbox(label='send with history', value=True)
             chat_send_btn = gradio.Button("send")
+
+        with gradio.Row():
+            chat_last_resp = gradio.JSON(label='last response')
             chat_send_btn.click(
                 on_click_send_btn,
                 inputs=[global_state, api_key_text, chat_input, prompt_table, chat_use_history, chat_log],
                 outputs=[global_state, chat_log, chat_log_box, chat_last_resp])
-
 
         pass
 
