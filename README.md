@@ -8,8 +8,8 @@ GUI for OpenAI's [ChatGPT API](https://platform.openai.com/docs/api-reference/ch
 
 ### TODO
 
-- [] Stream
-- [] Save Settings
-- [] Save history
-- [] Export history
-- [] Import history
+- [ ] Stream
+- [ ] Save Settings
+- [ ] Save history
+- [ ] Export history
+- [ ] Import history
