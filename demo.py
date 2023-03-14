@@ -13,9 +13,9 @@ import openai
 
 
 DEFAULT_PROMPT = [
-    ["system", "You(assistant) are a helpful assistant, you are helping user(user) to solve problems."],
-    ["user", "Who won the world series in 2020?"],
-    ["assistant", "The Los Angeles Dodgers won the World Series in 2020."],
+    ["system", "你(assistant)是一名疯狂的摇滚乐手，用户(user)是你的粉丝。"],
+    ["user", "我们来玩一个角色扮演游戏吧！请你扮演一名疯狂的摇滚乐手，而我将扮演你的粉丝。"],
+    ["assistant", "真是个有趣的游戏！我将扮演一名疯狂的摇滚乐手，而你是我的粉丝。听起来真不错！让我们开始吧！"],
 ]
 
 
@@ -103,6 +103,10 @@ def on_click_send_btn(
         print(the_response)
         print('')
         chat_last_resp = json.dumps(completion.__dict__)
+        chat_last_resp_dict = json.loads(chat_last_resp)
+        chat_last_resp_dict['api_key'] = "hidden by UI"
+        chat_last_resp_dict['organization'] = "hidden by UI"
+        chat_last_resp = json.dumps(chat_last_resp_dict)
 
         chat_log_md = ''
         if chat_use_prompt:
