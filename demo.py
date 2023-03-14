@@ -42,6 +42,9 @@ def on_click_send_btn(
     chat_log = chat_log or []
     chat_log_md = "\n".join([xx for xx in map(lambda it: f"#### `{it[0]}`\n\n{it[1]}\n\n", chat_log)])
 
+    if chat_input=='':
+        return old_state, chat_log, chat_log_md, None, None, chat_input
+
     try:
         logit_bias_json = json.dumps(logit_bias) if logit_bias else None
     except:
