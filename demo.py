@@ -35,12 +35,24 @@ def get_settings(old_state):
 
 
 def on_click_send_btn(
-        old_state, api_key_text, chat_input_role, chat_input, prompt_table, chat_use_history, chat_log,
+        old_state, api_key_text, chat_input_role, chat_input, prompt_table, chat_use_prompt, chat_use_history, chat_log,
         temperature, top_p, choices_num, stream, max_tokens, presence_penalty, frequency_penalty, logit_bias,
     ):
 
+    print(prompt_table)
+    prompt_table = prompt_table or []
+
     chat_log = chat_log or []
-    chat_log_md = "\n".join([xx for xx in map(lambda it: f"#### `{it[0]}`\n\n{it[1]}\n\n", chat_log)])
+
+    chat_log_md = ''
+    if chat_use_prompt:
+        chat_log_md += '<center>(prompt)</center>\n\n'
+        chat_log_md += "\n".join([xx for xx in map(lambda it: f"##### `{it[0]}`\n\n{it[1]}\n\n", prompt_table)])
+        chat_log_md += '\n---\n'
+    if True:
+        chat_log_md += '<center>(history)</center>\n\n' if chat_use_history else '<center>(not used history)</center>\n\n'
+        chat_log_md += "\n".join([xx for xx in map(lambda it: f"##### `{it[0]}`\n\n{it[1]}\n\n", chat_log)])
+        chat_log_md += '\n---\n'
 
     if chat_input=='':
         return old_state, chat_log, chat_log_md, None, None, chat_input
@@ -52,22 +64,22 @@ def on_click_send_btn(
 
     new_state = copy.deepcopy(old_state) or {}
 
-    print(prompt_table)
 
-    hist = prompt_table or []
+
+    req_hist = copy.deepcopy(prompt_table) if chat_use_prompt else []
 
     if chat_use_history:
         for hh in (chat_log or []):
-            hist.append(hh)
+            req_hist.append(hh)
 
     if chat_input and chat_input!="":
-        hist.append([(chat_input_role or 'user'), chat_input])
+        req_hist.append([(chat_input_role or 'user'), chat_input])
 
     openai.api_key = api_key_text
 
     props = {
         'model': "gpt-3.5-turbo",
-        'messages': [xx for xx in map(lambda it: {'role':it[0], 'content':it[1]}, hist)],
+        'messages': [xx for xx in map(lambda it: {'role':it[0], 'content':it[1]}, req_hist)],
         'temperature': temperature,
         'top_p': top_p,
         'n': choices_num,
@@ -92,16 +104,40 @@ def on_click_send_btn(
         print('')
         chat_last_resp = json.dumps(completion.__dict__)
 
+        chat_log_md = ''
+        if chat_use_prompt:
+            chat_log_md += '<center>(prompt)</center>\n\n'
+            chat_log_md += "\n".join([xx for xx in map(lambda it: f"##### `{it[0]}`\n\n{it[1]}\n\n", prompt_table)])
+            chat_log_md += '\n---\n'
+        if True:
+            chat_log_md += '<center>(history)</center>\n\n' if chat_use_history else '<center>(not used history)</center>\n\n'
+            chat_log_md += "\n".join([xx for xx in map(lambda it: f"##### `{it[0]}`\n\n{it[1]}\n\n", chat_log)])
+            chat_log_md += '\n---\n'
+
         if chat_input and chat_input!="":
             chat_log.append([(chat_input_role or 'user'), chat_input])
+            chat_log_md += f"##### `{(chat_input_role or 'user')}`\n\n{chat_input}\n\n"
         chat_log.append([the_response_role, the_response])
-
-        chat_log_md = "\n".join([xx for xx in map(lambda it: f"#### `{it[0]}`\n\n{it[1]}\n\n", chat_log)])
+        chat_log_md += f"##### `{the_response_role}`\n\n{the_response}\n\n"
 
         return new_state, chat_log, chat_log_md, chat_last_resp, props_json, ''
     except Exception as error:
         print(error)
-        chat_log_md = "\n".join([xx for xx in map(lambda it: f"#### `{it[0]}`\n\n{it[1]}\n\n", chat_log)])
+
+        chat_log_md = ''
+        if chat_use_prompt:
+            chat_log_md += '<center>(prompt)</center>\n\n'
+            chat_log_md += "\n".join([xx for xx in map(lambda it: f"##### `{it[0]}`\n\n{it[1]}\n\n", prompt_table)])
+            chat_log_md += '\n---\n'
+        if True:
+            chat_log_md += '<center>(history)</center>\n\n' if chat_use_history else '<center>(not used history)</center>\n\n'
+            chat_log_md += "\n".join([xx for xx in map(lambda it: f"##### `{it[0]}`\n\n{it[1]}\n\n", chat_log)])
+            chat_log_md += '\n---\n'
+
+        # chat_log_md = ''
+        # chat_log_md = "\n".join([xx for xx in map(lambda it: f"##### `{it[0]}`\n\n{it[1]}\n\n", prompt_table)]) if chat_use_prompt else ''
+        # chat_log_md += "\n".join([xx for xx in map(lambda it: f"##### `{it[0]}`\n\n{it[1]}\n\n", hist)])
+
         chat_log_md += "\n"
         chat_log_md += str(error)
         return new_state, chat_log, chat_log_md, None, props_json, chat_input
@@ -116,6 +152,10 @@ def save_settings(old_state, api_key_text):
     # 提交事务
     txn.commit()
     return get_settings(old_state)
+
+
+def clear_history():
+    return [], ""
 
 
 css = """
@@ -178,17 +218,19 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
                         chat_input = gradio.Textbox(lines=4, label='input')
                 with gradio.Row():
                     chat_clear_history_btn = gradio.Button("clear history")
+                    chat_clear_history_btn.click(clear_history, inputs=[], outputs=[chat_log, chat_log_box])
+                    chat_use_prompt = gradio.Checkbox(label='send with prompt', value=True)
                     chat_use_history = gradio.Checkbox(label='send with history', value=True)
                     chat_send_btn = gradio.Button("send")
                 pass
 
         with gradio.Row():
-            chat_last_resp = gradio.JSON(label='last response')
             chat_last_req = gradio.JSON(label='last request')
+            chat_last_resp = gradio.JSON(label='last response')
             chat_send_btn.click(
                 on_click_send_btn,
                 inputs=[
-                    global_state, api_key_text, chat_input_role, chat_input, prompt_table, chat_use_history, chat_log,
+                    global_state, api_key_text, chat_input_role, chat_input, prompt_table, chat_use_prompt, chat_use_history, chat_log,
                     chat_temperature, chat_top_p, chat_choices_num, chat_stream, chat_max_tokens, chat_presence_penalty, chat_frequency_penalty, chat_logit_bias,
                 ],
                 outputs=[global_state, chat_log, chat_log_box, chat_last_resp, chat_last_req, chat_input])
