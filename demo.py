@@ -183,10 +183,31 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
         with gradio.Row():
             with gradio.Column(scale=2):
                 api_key_refresh_btn = gradio.Button("🔄")
-                api_key_refresh_btn.click(get_settings, inputs=[global_state], outputs=[global_state, api_key_text])
+                api_key_refresh_btn.click(
+                    # get_settings,
+                    None,
+                    inputs=[global_state],
+                    outputs=[global_state, api_key_text],
+                    _js="""(global_state, api_key_text)=>{
+                        global_state=(global_state??{});
+                        global_state['api_key_text']=localStorage?.getItem?.('[gradio][chat-gpt-ui][api_key_text]');
+                        return [global_state, global_state['api_key_text']];
+                    }""",
+                )
             with gradio.Column(scale=2):
                 api_key_save_btn = gradio.Button("💾")
-                api_key_save_btn.click(save_settings, inputs=[global_state, api_key_text], outputs=[global_state, api_key_text])
+                api_key_save_btn.click(
+                    # save_settings,
+                    None,
+                    inputs=[global_state, api_key_text],
+                    outputs=[global_state, api_key_text],
+                    _js="""(global_state, api_key_text)=>{
+                        localStorage.setItem('[gradio][chat-gpt-ui][api_key_text]', api_key_text);
+                        global_state=(global_state??{});
+                        global_state['api_key_text']=localStorage?.getItem?.('[gradio][chat-gpt-ui][api_key_text]');
+                        return [global_state, global_state['api_key_text']];
+                    }""",
+                )
 
         with gradio.Row():
             with gradio.Column(scale=10):
