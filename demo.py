@@ -1,13 +1,13 @@
-import gradio as gr
+# import gradio as gr
 import gradio
-import lmdb
-import base64
-import io
-import random
-import time
+# import lmdb
+# import base64
+# import io
+# import random
+# import time
 import json
 import copy
-import sqlite3
+# import sqlite3
 from urllib.parse import urljoin
 import openai
 
@@ -19,19 +19,30 @@ DEFAULT_PROMPT = [
 ]
 
 
-def get_settings(old_state):
-    db_path = './my_app_state'
-    env = lmdb.open(db_path, max_dbs=2*1024*1024)
-    # print(env.stat())
-    txn = env.begin()
-    saved_api_key = txn.get(key=b'api_key').decode('utf-8') or ''
-    txn.commit()
-    env.close()
+# def get_settings(old_state):
+#     db_path = './my_app_state'
+#     env = lmdb.open(db_path, max_dbs=2*1024*1024)
+#     # print(env.stat())
+#     txn = env.begin()
+#     saved_api_key = txn.get(key=b'api_key').decode('utf-8') or ''
+#     txn.commit()
+#     env.close()
 
-    new_state = copy.deepcopy(old_state) or {}
-    new_state['api_key'] = saved_api_key
+#     new_state = copy.deepcopy(old_state) or {}
+#     new_state['api_key'] = saved_api_key
 
-    return new_state, saved_api_key
+#     return new_state, saved_api_key
+
+
+# def save_settings(old_state, api_key_text):
+#     db_path = './my_app_state'
+#     env = lmdb.open(db_path, max_dbs=2*1024*1024)
+#     # print(env.stat())
+#     txn = env.begin(write=True)
+#     txn.put(key=b'api_key', value=api_key_text.encode('utf-8'))
+#     # 提交事务
+#     txn.commit()
+#     return get_settings(old_state)
 
 
 def on_click_send_btn(
@@ -145,17 +156,6 @@ def on_click_send_btn(
         chat_log_md += "\n"
         chat_log_md += str(error)
         return new_state, chat_log, chat_log_md, None, props_json, chat_input
-
-
-def save_settings(old_state, api_key_text):
-    db_path = './my_app_state'
-    env = lmdb.open(db_path, max_dbs=2*1024*1024)
-    # print(env.stat())
-    txn = env.begin(write=True)
-    txn.put(key=b'api_key', value=api_key_text.encode('utf-8'))
-    # 提交事务
-    txn.commit()
-    return get_settings(old_state)
 
 
 def clear_history():
