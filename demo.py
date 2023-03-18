@@ -13,9 +13,7 @@ import openai
 
 
 DEFAULT_PROMPT = [
-    ["system", "你(assistant)是一名疯狂的摇滚乐手，用户(user)是你的粉丝。"],
-    ["user", "我们来玩一个角色扮演游戏吧！请你扮演一名疯狂的摇滚乐手，而我将扮演你的粉丝。"],
-    ["assistant", "真是个有趣的游戏！我将扮演一名疯狂的摇滚乐手，而你是我的粉丝。听起来真不错！让我们开始吧！"],
+    ["system", "You(assistant) are a helpful AI assistant."],
 ]
 
 
@@ -47,9 +45,10 @@ DEFAULT_PROMPT = [
 
 def on_click_send_btn(
         old_state, api_key_text, chat_input_role, chat_input, prompt_table, chat_use_prompt, chat_use_history, chat_log,
-        temperature, top_p, choices_num, stream, max_tokens, presence_penalty, frequency_penalty, logit_bias,
+        chat_model, temperature, top_p, choices_num, stream, max_tokens, presence_penalty, frequency_penalty, logit_bias,
     ):
 
+    print('\n\n\n\n\n')
     print(prompt_table)
     prompt_table = prompt_table or []
 
@@ -65,8 +64,12 @@ def on_click_send_btn(
         chat_log_md += "\n".join([xx for xx in map(lambda it: f"##### `{it[0]}`\n\n{it[1]}\n\n", chat_log)])
         chat_log_md += '\n---\n'
 
-    if chat_input=='':
-        return old_state, chat_log, chat_log_md, None, None, chat_input
+    # if chat_input=='':
+    #     return old_state, chat_log, chat_log_md, None, None, chat_input
+
+    print('\n')
+    print(chat_input)
+    print('')
 
     try:
         logit_bias_json = json.dumps(logit_bias) if logit_bias else None
@@ -89,7 +92,7 @@ def on_click_send_btn(
     openai.api_key = api_key_text
 
     props = {
-        'model': "gpt-3.5-turbo",
+        'model': chat_model,
         'messages': [xx for xx in map(lambda it: {'role':it[0], 'content':it[1]}, req_hist)],
         'temperature': temperature,
         'top_p': top_p,
@@ -108,7 +111,7 @@ def on_click_send_btn(
     try:
         completion = openai.ChatCompletion.create(**props)
         print('')
-        print(completion)
+        print(completion.choices)
         the_response_role = completion.choices[0].message.role
         the_response = completion.choices[0].message.content
         print(the_response)
@@ -161,6 +164,9 @@ def on_click_send_btn(
 def clear_history():
     return [], ""
 
+def copy_history():
+    pass
+
 
 css = """
 .table-wrap .cell-wrap input {min-width:80%}
@@ -182,12 +188,13 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
 
         with gradio.Row():
             with gradio.Column(scale=2):
-                api_key_refresh_btn = gradio.Button("🔄")
+                api_key_refresh_btn = gradio.Button("🔄 Load from browser storage")
                 api_key_refresh_btn.click(
                     # get_settings,
                     None,
                     inputs=[global_state],
                     outputs=[global_state, api_key_text],
+                    api_name="load-settings",
                     _js="""(global_state, api_key_text)=>{
                         global_state=(global_state??{});
                         global_state['api_key_text']=localStorage?.getItem?.('[gradio][chat-gpt-ui][api_key_text]');
@@ -195,12 +202,13 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
                     }""",
                 )
             with gradio.Column(scale=2):
-                api_key_save_btn = gradio.Button("💾")
+                api_key_save_btn = gradio.Button("💾 Save to browser storage")
                 api_key_save_btn.click(
                     # save_settings,
                     None,
                     inputs=[global_state, api_key_text],
                     outputs=[global_state, api_key_text],
+                    api_name="save-settings",
                     _js="""(global_state, api_key_text)=>{
                         localStorage.setItem('[gradio][chat-gpt-ui][api_key_text]', api_key_text);
                         global_state=(global_state??{});
@@ -217,13 +225,17 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
                         label='Prompt', col_count=(2, 'fixed'), max_cols=2,
                         value=DEFAULT_PROMPT, headers=['role', 'content'], interactive=True,
                     )
-                    gradio.Markdown("Will be added to the beginning of the conversation. See https://platform.openai.com/docs/guides/chat/introduction .")
+                    gradio.Markdown("The Table above is editable. The content will be added to the beginning of the conversation (if you check 'send with prompt' as `√`). See https://platform.openai.com/docs/guides/chat/introduction .")
 
 
         with gradio.Row():
             with gradio.Column(scale=4):
                 with gradio.Box():
                     gradio.Markdown("See https://platform.openai.com/docs/api-reference/chat/create .")
+                    chat_model = gradio.Dropdown(label="model", choices=[
+                        "gpt-3.5-turbo", "gpt-3.5-turbo-0301",
+                        "gpt-4", "gpt-4-0314", "gpt-4-32k", "gpt-4-32k-0314",
+                    ], value="gpt-3.5-turbo")
                     chat_temperature = gradio.Slider(label="temperature", value=1, minimum=0, maximum=2)
                     chat_top_p = gradio.Slider(label="top_p", value=1, minimum=0, maximum=1)
                     chat_choices_num = gradio.Slider(label="choices num(n)", value=1, minimum=1, maximum=20)
@@ -237,9 +249,17 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
                 with gradio.Row():
                     with gradio.Column(scale=10):
                         chat_log = gradio.State()
-                        with gradio.Box():
-                            chat_log_box = gradio.Markdown(label='chat history')
-                        chat_input_role = gradio.Textbox(lines=1, label='role', value='user')
+                        with gradio.Box(label='chat history'):
+                            chat_log_box = gradio.Markdown(value="<center>(empty)</center>")
+                            chat_copy_history_btn = gradio.Button("Copy all (as html currently)")
+                            chat_copy_history_btn.click(
+                                copy_history, inputs=[chat_log_box],
+                                _js="""(txt)=>{
+                                    try {let promise = navigator?.clipboard?.writeText?.(txt);}
+                                    catch(error) {console?.log?.(error);};
+                                }""",
+                            )
+                        chat_input_role = gradio.Dropdown(lines=1, label='role', choices=['user', 'system', 'assistant'], value='user')
                         chat_input = gradio.Textbox(lines=4, label='input')
                 with gradio.Row():
                     chat_clear_history_btn = gradio.Button("clear history")
@@ -256,29 +276,18 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
                 on_click_send_btn,
                 inputs=[
                     global_state, api_key_text, chat_input_role, chat_input, prompt_table, chat_use_prompt, chat_use_history, chat_log,
-                    chat_temperature, chat_top_p, chat_choices_num, chat_stream, chat_max_tokens, chat_presence_penalty, chat_frequency_penalty, chat_logit_bias,
+                    chat_model, chat_temperature, chat_top_p, chat_choices_num, chat_stream, chat_max_tokens, chat_presence_penalty, chat_frequency_penalty, chat_logit_bias,
                 ],
-                outputs=[global_state, chat_log, chat_log_box, chat_last_resp, chat_last_req, chat_input])
+                outputs=[global_state, chat_log, chat_log_box, chat_last_resp, chat_last_req, chat_input],
+                api_name="click-send-btn",
+            )
 
         pass
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     with gradio.Tab("Settings"):
+        gradio.Markdown('Currently nothing.')
         pass
 
 
