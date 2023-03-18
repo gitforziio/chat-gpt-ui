@@ -164,7 +164,7 @@ def on_click_send_btn(
 def clear_history():
     return [], ""
 
-def copy_history():
+def copy_history(txt):
     pass
 
 
@@ -249,8 +249,8 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
                 with gradio.Row():
                     with gradio.Column(scale=10):
                         chat_log = gradio.State()
-                        with gradio.Box(label='chat history'):
-                            chat_log_box = gradio.Markdown(value="<center>(empty)</center>")
+                        with gradio.Box():
+                            chat_log_box = gradio.Markdown(label='chat history', value="<center>(empty)</center>")
                             chat_copy_history_btn = gradio.Button("Copy all (as html currently)")
                             chat_copy_history_btn.click(
                                 copy_history, inputs=[chat_log_box],
@@ -259,7 +259,7 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
                                     catch(error) {console?.log?.(error);};
                                 }""",
                             )
-                        chat_input_role = gradio.Dropdown(lines=1, label='role', choices=['user', 'system', 'assistant'], value='user')
+                        chat_input_role = gradio.Dropdown(label='role', choices=['user', 'system', 'assistant'], value='user')
                         chat_input = gradio.Textbox(lines=4, label='input')
                 with gradio.Row():
                     chat_clear_history_btn = gradio.Button("clear history")
