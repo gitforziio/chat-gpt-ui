@@ -65,7 +65,7 @@ def on_click_send_btn(
         chat_log_md += '\n---\n'
 
     # if chat_input=='':
-    #     return old_state, chat_log, chat_log_md, None, None, chat_input
+    #     return old_state, chat_log, chat_log_md, chat_log_md, None, None, chat_input
 
     print('\n')
     print(chat_input)
@@ -74,7 +74,7 @@ def on_click_send_btn(
     try:
         logit_bias_json = json.dumps(logit_bias) if logit_bias else None
     except:
-        return old_state, chat_log, chat_log_md, None, None, chat_input
+        return old_state, chat_log, chat_log_md, chat_log_md, None, None, chat_input
 
     new_state = copy.deepcopy(old_state) or {}
 
@@ -138,7 +138,7 @@ def on_click_send_btn(
         chat_log.append([the_response_role, the_response])
         chat_log_md += f"##### `{the_response_role}`\n\n{the_response}\n\n"
 
-        return new_state, chat_log, chat_log_md, chat_last_resp, props_json, ''
+        return new_state, chat_log, chat_log_md, chat_log_md, chat_last_resp, props_json, ''
     except Exception as error:
         print(error)
 
@@ -158,13 +158,16 @@ def on_click_send_btn(
 
         chat_log_md += "\n"
         chat_log_md += str(error)
-        return new_state, chat_log, chat_log_md, None, props_json, chat_input
+        return new_state, chat_log, chat_log_md, chat_log_md, None, props_json, chat_input
 
 
 def clear_history():
     return [], ""
 
 def copy_history(txt):
+    # print('\n\n copying')
+    # print(txt)
+    # print('\n\n')
     pass
 
 
@@ -172,6 +175,7 @@ css = """
 .table-wrap .cell-wrap input {min-width:80%}
 #api-key-textbox textarea {filter:blur(8px); transition: filter 0.25s}
 #api-key-textbox textarea:focus {filter:none}
+#chat-log-md hr {margin-top: 1rem; margin-bottom: 1rem;}
 """
 with gradio.Blocks(title="ChatGPT", css=css) as demo:
     global_state = gradio.State(value={})
@@ -250,11 +254,25 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
                     with gradio.Column(scale=10):
                         chat_log = gradio.State()
                         with gradio.Box():
-                            chat_log_box = gradio.Markdown(label='chat history', value="<center>(empty)</center>")
-                            chat_copy_history_btn = gradio.Button("Copy all (as html currently)")
+                            with gradio.Column(scale=10):
+                                chat_log_box = gradio.Markdown(label='chat history', value="<center>(empty)</center>", elem_id="chat-log-md")
+                                real_md_box = gradio.Textbox(value="", visible=False)
+                                with gradio.Row():
+                                    chat_copy_history_btn = gradio.Button("Copy all (as HTML)")
+                                    chat_copy_history_md_btn = gradio.Button("Copy all (as Markdown)")
+
                             chat_copy_history_btn.click(
                                 copy_history, inputs=[chat_log_box],
                                 _js="""(txt)=>{
+                                    console.log(txt);
+                                    try {let promise = navigator?.clipboard?.writeText?.(txt);}
+                                    catch(error) {console?.log?.(error);};
+                                }""",
+                            )
+                            chat_copy_history_md_btn.click(
+                                copy_history, inputs=[real_md_box],
+                                _js="""(txt)=>{
+                                    console.log(txt);
                                     try {let promise = navigator?.clipboard?.writeText?.(txt);}
                                     catch(error) {console?.log?.(error);};
                                 }""",
@@ -278,7 +296,7 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
                     global_state, api_key_text, chat_input_role, chat_input, prompt_table, chat_use_prompt, chat_use_history, chat_log,
                     chat_model, chat_temperature, chat_top_p, chat_choices_num, chat_stream, chat_max_tokens, chat_presence_penalty, chat_frequency_penalty, chat_logit_bias,
                 ],
-                outputs=[global_state, chat_log, chat_log_box, chat_last_resp, chat_last_req, chat_input],
+                outputs=[global_state, chat_log, chat_log_box, real_md_box, chat_last_resp, chat_last_req, chat_input],
                 api_name="click-send-btn",
             )
 
