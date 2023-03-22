@@ -9,6 +9,7 @@
     "openai",
     "sessionmaker",
     "sqlalchemy",
-    "tqdm"
+    "tqdm",
+    "unshift"
   ]
 }
