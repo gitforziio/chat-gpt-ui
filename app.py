@@ -255,17 +255,25 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
                 gradio.Markdown("**Prompt**")
                 with gradio.Column(scale=12):
                     with gradio.Row():
-                        prompt_title = gradio.Textbox(label='Prompt title (only for saving)')
-                        selected_saved_prompt_title = gradio.Dropdown(label='Select prompt from saved list')
+                        with gradio.Column(scale=6):
+                            prompt_title = gradio.Textbox(label='Prompt title (only for saving)')
+                        with gradio.Column(scale=6):
+                            selected_saved_prompt_title = gradio.Dropdown(label='Select prompt from saved list (click ♻️ then 🔄)')
                     with gradio.Row():
-                        saved_prompts_refresh_btn = gradio.Button("♻️")
-                        saved_prompts_save_btn = gradio.Button("💾")
-                        saved_prompts_delete_btn = gradio.Button("🗑")
-                        saved_prompts_list_refresh_btn = gradio.Button("🔄")
-                        copy_prompt = gradio.Button("📑")
-                        paste_prompt = gradio.Button("📋")
+                        with gradio.Column(scale=1, min_width=100):
+                            saved_prompts_refresh_btn = gradio.Button("♻️")
+                        with gradio.Column(scale=1, min_width=100):
+                            saved_prompts_save_btn = gradio.Button("💾")
+                        with gradio.Column(scale=1, min_width=100):
+                            saved_prompts_delete_btn = gradio.Button("🗑")
+                        with gradio.Column(scale=1, min_width=100):
+                            saved_prompts_list_refresh_btn = gradio.Button("🔄")
+                        with gradio.Column(scale=1, min_width=100):
+                            copy_prompt = gradio.Button("📑")
+                        with gradio.Column(scale=1, min_width=100):
+                            paste_prompt = gradio.Button("📋")
                     with gradio.Row():
-                        gradio.Markdown("""Buttons above:  ♻️ : Load prompts from browser storage (but not updated into the list).  💾 : Save current prompt to browser storage, overwrite the prompt with the same title (but not updated into the list).  🗑 : Delete prompt with the same title from browser storage (but not updated into the list).  🔄 : Update the selector list.  📑 : Copy current prompt to clipboard.  📋 : Paste prompt from clipboard (need [permission](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/readText#browser_compatibility)).""")
+                        gradio.Markdown("""Buttons above:  ♻️ then 🔄: Load prompts from browser storage.  💾 then 🔄: Save current prompt to browser storage, overwrite the prompt with the same title.  🗑 then 🔄: Delete prompt with the same title from browser storage.  🔄 : Update the selector list.  📑 : Copy current prompt to clipboard.  📋 : Paste prompt from clipboard (need [permission](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/readText#browser_compatibility)).""")
                     with gradio.Row():
                         prompt_table = gradio.Dataframe(
                             type='array',
