@@ -11,36 +11,11 @@ import copy
 from urllib.parse import urljoin
 import openai
 
+from app_js import saved_prompts_refresh_btn__click_js, selected_saved_prompt_title__change_js, saved_prompts_delete_btn__click_js, saved_prompts_save_btn__click_js, copy_prompt__click_js, paste_prompt__click_js, chat_copy_history_btn__click_js, chat_copy_history_md_btn__click_js, api_key_refresh_btn__click_js, api_key_save_btn__click_js
 
 DEFAULT_PROMPT = [
     ["system", "You(assistant) are a helpful AI assistant."],
 ]
-
-
-# def get_settings(old_state):
-#     db_path = './my_app_state'
-#     env = lmdb.open(db_path, max_dbs=2*1024*1024)
-#     # print(env.stat())
-#     txn = env.begin()
-#     saved_api_key = txn.get(key=b'api_key').decode('utf-8') or ''
-#     txn.commit()
-#     env.close()
-
-#     new_state = copy.deepcopy(old_state) or {}
-#     new_state['api_key'] = saved_api_key
-
-#     return new_state, saved_api_key
-
-
-# def save_settings(old_state, api_key_text):
-#     db_path = './my_app_state'
-#     env = lmdb.open(db_path, max_dbs=2*1024*1024)
-#     # print(env.stat())
-#     txn = env.begin(write=True)
-#     txn.put(key=b'api_key', value=api_key_text.encode('utf-8'))
-#     # 提交事务
-#     txn.commit()
-#     return get_settings(old_state)
 
 
 def on_click_send_btn(
@@ -228,11 +203,8 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
                                 None,
                                 inputs=[],
                                 outputs=[api_key_text],
-                                api_name="load-settings",
-                                _js="""()=>{
-                                    const the_api_key = localStorage?.getItem?.('[gradio][chat-gpt-ui][api_key_text]') ?? '';
-                                    return the_api_key;
-                                }""",
+                                # api_name="load-api-key",
+                                _js=api_key_refresh_btn__click_js,
                             )
                         with gradio.Column(scale=2):
                             api_key_save_btn = gradio.Button("💾 Save to browser storage")
@@ -241,11 +213,8 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
                                 None,
                                 inputs=[api_key_text],
                                 outputs=[api_key_text],
-                                api_name="save-settings",
-                                _js="""(api_key_text)=>{
-                                    localStorage.setItem('[gradio][chat-gpt-ui][api_key_text]', api_key_text);
-                                    return api_key_text;
-                                }""",
+                                # api_name="save-api-key",
+                                _js=api_key_save_btn__click_js,
                             )
                     with gradio.Row():
                         gradio.Markdown("Go to https://platform.openai.com/account/api-keys to get your API key.")
@@ -254,6 +223,14 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
             with gradio.Box():
                 gradio.Markdown("**Prompt**")
                 with gradio.Column(scale=12):
+                    with gradio.Row():
+                        prompt_table = gradio.Dataframe(
+                            type='array',
+                            label='Prompt content', col_count=(2, 'fixed'), max_cols=2,
+                            value=DEFAULT_PROMPT, headers=['role', 'content'], interactive=True,
+                        )
+                    with gradio.Row():
+                        gradio.Markdown("The Table above is editable. The content will be added to the beginning of the conversation (if you check 'send with prompt' as `√`). See https://platform.openai.com/docs/guides/chat/introduction .")
                     with gradio.Row():
                         with gradio.Column(scale=6):
                             prompt_title = gradio.Textbox(label='Prompt title (only for saving)')
@@ -274,148 +251,20 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
                             paste_prompt = gradio.Button("📋")
                     with gradio.Row():
                         gradio.Markdown("""Buttons above:  ♻️ then 🔄: Load prompts from browser storage.  💾 then 🔄: Save current prompt to browser storage, overwrite the prompt with the same title.  🗑 then 🔄: Delete prompt with the same title from browser storage.  🔄 : Update the selector list.  📑 : Copy current prompt to clipboard.  📋 : Paste prompt from clipboard (need [permission](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/readText#browser_compatibility)).""")
-                    with gradio.Row():
-                        prompt_table = gradio.Dataframe(
-                            type='array',
-                            label='Prompt content', col_count=(2, 'fixed'), max_cols=2,
-                            value=DEFAULT_PROMPT, headers=['role', 'content'], interactive=True,
-                        )
-                    with gradio.Row():
-                        gradio.Markdown("The Table above is editable. The content will be added to the beginning of the conversation (if you check 'send with prompt' as `√`). See https://platform.openai.com/docs/guides/chat/introduction .")
 
-                copy_prompt.click(None, inputs=[prompt_title, prompt_table], outputs=[prompt_title, prompt_table], _js="""(prompt_title, prompt_table)=>{
-                    try {
-                        const txt = JSON.stringify({
-                            title: prompt_title,
-                            content: prompt_table,
-                        }, null, 2);
-                        console.log(txt);
-                        const promise = navigator?.clipboard?.writeText?.(txt);
-                    } catch(error) {console?.log?.(error);};
-                    return [prompt_title, prompt_table];
-                }""")
-                paste_prompt.click(None, inputs=[prompt_title, prompt_table], outputs=[prompt_title, prompt_table], _js="""async (prompt_title, prompt_table)=>{
-                    console.log("flag1");
-                    try {
-                        const promise = navigator?.clipboard?.readText?.();
-                        console.log(promise);
-                        console.log("flag1 p");
-                        const result = await promise?.then?.((txt)=>{
-                            console.log("flag1 t");
-                            const json = JSON.parse(txt);
-                            const title = json?.title ?? "";
-                            console.log("flag1 0");
-                            console.log(title);
-                            const content = json?.content ?? {data: [], headers: ['role', 'content']};
-                            console.log(content);
-                            const result = [title, content];
-                            console.log("flag1 1");
-                            console.log(result);
-                            console.log("flag1 2");
-                            return result;
-                        });
-                        console.log("flag1 3");
-                        if (result!=null) {
-                            return result;
-                        };
-                    } catch(error) {console?.log?.(error);};
-                    console.log("flag2");
-                    try {
-                        const promise = navigator?.clipboard?.read?.();
-                        console.log(promise);
-                        promise?.then?.((data)=>{
-                            console.log(data);
-                        });
-                    } catch(error) {console?.log?.(error);};
-                    console.log("flag3");
-                    return [prompt_title, prompt_table];
-                }""")
-                saved_prompts_refresh_btn.click(None, inputs=[global_state_json, selected_saved_prompt_title], outputs=[global_state_json, selected_saved_prompt_title], _js="""(global_state_json, saved_prompts)=>{
-                    try {
-                        if(global_state_json=="") {global_state_json=null;};
-                        console.log('global_state_json:\\n', global_state_json);
-                        const global_state = JSON.parse(global_state_json??"{ }")??{ };
-
-                        const saved = (JSON.parse(localStorage?.getItem?.('[gradio][chat-gpt-ui][prompts]') ?? '[]'));
-                        console.log('saved:\\n', saved);
-                        global_state['saved_prompts'] = saved;
-                        global_state['selected_saved_prompt_title'] = saved.map(it=>it?.title??"[untitled]")[0];
-
-                        const results = [JSON.stringify(global_state), global_state['selected_saved_prompt_title']];
-                        console.log(results);
-                        return results;
-                    } catch(error) {
-                        console.log(error);
-                        return ["{ }", ""];
-                    };
-                }""")
+                copy_prompt.click(None, inputs=[prompt_title, prompt_table], outputs=[prompt_title, prompt_table], _js=copy_prompt__click_js)
+                paste_prompt.click(None, inputs=[prompt_title, prompt_table], outputs=[prompt_title, prompt_table], _js=paste_prompt__click_js)
+                saved_prompts_refresh_btn.click(None, inputs=[global_state_json, selected_saved_prompt_title], outputs=[global_state_json, selected_saved_prompt_title], _js=saved_prompts_refresh_btn__click_js)
 
                 saved_prompts_list_refresh_btn.click(
                     update_saved_prompt_titles, inputs=[global_state_json, selected_saved_prompt_title], outputs=[selected_saved_prompt_title],
                 )
 
-                selected_saved_prompt_title.change(None, inputs=[global_state_json, selected_saved_prompt_title], outputs=[global_state_json, prompt_title, prompt_table], _js="""(global_state_json, selected_saved_prompt_title)=>{
-                    if(global_state_json=="") {global_state_json=null;};
-                    const global_state = JSON.parse(global_state_json??"{ }")??{ };
-                    const found = (global_state?.['saved_prompts']??[]).find(it=>it?.title==selected_saved_prompt_title);
-                    return [JSON.stringify(global_state), found?.title??'', found?.content??{data:[], headers:["role", "content"]}];
-                }""")
+                selected_saved_prompt_title.change(None, inputs=[global_state_json, selected_saved_prompt_title], outputs=[global_state_json, prompt_title, prompt_table], _js=selected_saved_prompt_title__change_js)
 
-                saved_prompts_delete_btn.click(None, inputs=[global_state_json, selected_saved_prompt_title, prompt_title, prompt_table], outputs=[global_state_json, selected_saved_prompt_title, prompt_title, prompt_table], _js="""(global_state_json, saved_prompts, prompt_title, prompt_table)=>{
-                    if(prompt_title==""||!prompt_title){
-                        return [global_state_json, selected_saved_prompt_title, prompt_title, prompt_table];
-                    };
-                    console.log('global_state_json:\\n', global_state_json);
+                saved_prompts_delete_btn.click(None, inputs=[global_state_json, selected_saved_prompt_title, prompt_title, prompt_table], outputs=[global_state_json, selected_saved_prompt_title, prompt_title, prompt_table], _js=saved_prompts_delete_btn__click_js)
 
-                    if(global_state_json=="") {global_state_json=null;};
-                    const global_state = JSON.parse(global_state_json??"{ }")??{ };
-                    console.log(global_state);
-
-                    const saved = (JSON.parse(localStorage?.getItem?.('[gradio][chat-gpt-ui][prompts]') ?? '[]'));
-                    console.log('saved:\\n', saved);
-
-
-                    global_state['saved_prompts'] = saved?.filter?.(it=>it.title!=prompt_title)??[];
-
-                    global_state['selected_saved_prompt_title'] = "";
-
-                    console.log(global_state);
-
-                    localStorage?.setItem?.('[gradio][chat-gpt-ui][prompts]', JSON.stringify(global_state['saved_prompts']));
-
-                    return [JSON.stringify(global_state), "", "", {data: [], headers: ['role', 'content']}];
-                }""")
-
-                saved_prompts_save_btn.click(None, inputs=[global_state_json, selected_saved_prompt_title, prompt_title, prompt_table], outputs=[global_state_json, selected_saved_prompt_title, prompt_title, prompt_table], _js="""(global_state_json, saved_prompts, prompt_title, prompt_table)=>{
-                    if(prompt_title==""||!prompt_title){
-                        return [global_state_json, selected_saved_prompt_title, prompt_title, prompt_table];
-                    };
-                    console.log('global_state_json:\\n', global_state_json);
-
-                    if(global_state_json=="") {global_state_json=null;};
-                    const global_state = JSON.parse(global_state_json??"{ }")??{ };
-                    console.log(global_state);
-
-                    const saved = (JSON.parse(localStorage?.getItem?.('[gradio][chat-gpt-ui][prompts]') ?? '[]'));
-                    console.log('saved:\\n', saved);
-
-
-                    const new_prompt_obj = {
-                        title: prompt_title, content: prompt_table,
-                    };
-
-                    global_state['saved_prompts'] = saved?.filter?.(it=>it.title!=prompt_title)??[];
-
-                    global_state['saved_prompts'].unshift(new_prompt_obj);
-
-                    global_state['selected_saved_prompt_title'] = prompt_title;
-
-                    console.log(global_state);
-
-                    localStorage?.setItem?.('[gradio][chat-gpt-ui][prompts]', JSON.stringify(global_state['saved_prompts']));
-
-                    return [JSON.stringify(global_state), prompt_title, prompt_title, prompt_table];
-                }""")
+                saved_prompts_save_btn.click(None, inputs=[global_state_json, selected_saved_prompt_title, prompt_title, prompt_table], outputs=[global_state_json, selected_saved_prompt_title, prompt_title, prompt_table], _js=saved_prompts_save_btn__click_js)
 
 
         with gradio.Row():
@@ -449,19 +298,11 @@ with gradio.Blocks(title="ChatGPT", css=css) as demo:
 
                             chat_copy_history_btn.click(
                                 copy_history, inputs=[chat_log_box],
-                                _js="""(txt)=>{
-                                    console.log(txt);
-                                    try {let promise = navigator?.clipboard?.writeText?.(txt);}
-                                    catch(error) {console?.log?.(error);};
-                                }""",
+                                _js=chat_copy_history_btn__click_js,
                             )
                             chat_copy_history_md_btn.click(
                                 copy_history, inputs=[real_md_box],
-                                _js="""(txt)=>{
-                                    console.log(txt);
-                                    try {let promise = navigator?.clipboard?.writeText?.(txt);}
-                                    catch(error) {console?.log?.(error);};
-                                }""",
+                                _js=chat_copy_history_md_btn__click_js,
                             )
                         chat_input_role = gradio.Dropdown(label='role', choices=['user', 'system', 'assistant'], value='user')
                         chat_input = gradio.Textbox(lines=4, label='input')
